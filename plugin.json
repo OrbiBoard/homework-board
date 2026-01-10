@@ -1,0 +1,19 @@
+{
+  "id": "homework-board",
+  "name": "每日作业",
+  "version": "1.0.0",
+  "description": "在桌面上显示每日作业，支持按日期管理",
+  "author": "Trae",
+  "type": "plugin",
+  "componentsDir": "widgets",
+  "icon": "ri-book-open-line",
+  "actions": [
+    {
+      "id": "addHomework",
+      "text": "添加作业",
+      "icon": "ri-edit-line",
+      "target": "openAddWindow"
+    }
+  ],
+  "enabled": true
+}

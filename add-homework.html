@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>添加作业</title>
+  <!-- Link will be injected dynamically -->
+  <style>
+    :root {
+      --bg-color: #1e1e1e;
+      --text-color: #e0e0e0;
+      --input-bg: #2d2d2d;
+      --border-color: #444;
+      --primary-color: #0078d4;
+      --hover-color: #3d3d3d;
+      --danger-color: #d9534f;
+    }
+    body { 
+      font-family: "Microsoft YaHei", sans-serif; 
+      padding: 20px; 
+      background: var(--bg-color); 
+      color: var(--text-color); 
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; color: #aaa; font-size: 14px; }
+    
+    input[type="date"] {
+      background: var(--input-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      padding: 8px;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .homework-list {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      background: #252525;
+      margin-bottom: 20px;
+    }
+
+    .homework-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: flex-start;
+      background: var(--input-bg);
+      padding: 10px;
+      border-radius: 4px;
+    }
+    
+    .homework-item input, .homework-item textarea {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-color);
+      padding: 6px;
+      border-radius: 4px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .homework-item input:focus, .homework-item textarea:focus {
+      background: #333;
+      border-color: var(--primary-color);
+      outline: none;
+    }
+
+    .input-subject { width: 80px; font-weight: bold; margin-top: 2px; }
+    .input-content { flex: 1; min-height: 34px; height: auto; line-height: 1.5; overflow: hidden; }
+    
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .btn-icon:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .btn-delete:hover { color: var(--danger-color); }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.primary-btn { 
+      padding: 10px 24px; 
+      cursor: pointer; 
+      background: var(--primary-color); 
+      color: white; 
+      border: none; 
+      border-radius: 4px; 
+      font-size: 14px; 
+    }
+    button.primary-btn:hover { background: #005a9e; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .secondary-btn {
+      padding: 10px 16px;
+      cursor: pointer;
+      background: #333;
+      color: #ccc;
+      border: 1px solid #555;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .secondary-btn:hover { background: #444; }
+
+    .status { margin-left: auto; color: #888; font-size: 12px; }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-color); }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="font-size: 18px; font-weight: bold;">编辑作业</div>
+    <input type="date" id="date-picker">
+  </div>
+
+  <div class="homework-list" id="homework-list">
+    <!-- Items will be injected here -->
+  </div>
+
+  <div class="footer">
+    <button class="secondary-btn" id="btn-add-row"><i class="ri-add-line"></i> 添加科目</button>
+    <button class="primary-btn" id="btn-save"><i class="ri-save-line"></i> 保存</button>
+    <span id="status-msg" class="status"></span>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    
+    // Inject RemixIcon from main app resources
+    (async () => {
+        try {
+            const url = await ipcRenderer.invoke('asset:url', 'remixicon-local.css');
+            if (url) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                document.head.appendChild(link);
+            }
+        } catch(e) { console.error('Failed to load icons', e); }
+    })();
+
+    const listContainer = document.getElementById('homework-list');
+    const defaultSubjects = ['语文', '数学', '英语', '物理', '化学', '生物'];
+
+    const getLocalISODate = () => {
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - offset).toISOString().split('T')[0];
+    };
+    
+    const today = getLocalISODate();
+    document.getElementById('date-picker').value = today;
+
+    // Load existing
+    loadHomework(today);
+
+    document.getElementById('date-picker').addEventListener('change', (e) => {
+        loadHomework(e.target.value);
+    });
+
+    async function loadHomework(date) {
+        listContainer.innerHTML = '';
+        try {
+            console.log('Loading homework for:', date);
+            const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getHomework', [date]);
+            console.log('Loaded result:', res);
+            let data = [];
+            
+            // Handle data format
+            if (res && res.ok && res.data) {
+                if (typeof res.data === 'string') {
+                    try {
+                        const parsed = JSON.parse(res.data);
+                        if (Array.isArray(parsed)) data = parsed;
+                        else data = [{ subject: '备注', content: res.data }];
+                    } catch {
+                        // Plain text fallback
+                        if (res.data.trim()) {
+                             data = [{ subject: '作业', content: res.data }];
+                        }
+                    }
+                } else if (Array.isArray(res.data)) {
+                    data = res.data;
+                } else if (typeof res.data === 'object') {
+                     // Should not happen if we stringify on save, but just in case
+                     // Maybe it's a legacy object map? Not supporting that.
+                }
+            }
+
+            // If empty, use default subjects
+            if (data.length === 0) {
+                defaultSubjects.forEach(subj => addRow(subj, ''));
+            } else {
+                data.forEach(item => addRow(item.subject, item.content));
+            }
+            
+            document.getElementById('status-msg').textContent = '';
+        } catch(e) {
+            console.error(e);
+            document.getElementById('status-msg').textContent = '加载失败: ' + e.message;
+        }
+    }
+
+    function addRow(subject = '', content = '') {
+        const div = document.createElement('div');
+        div.className = 'homework-item';
+        div.innerHTML = `
+            <input type="text" class="input-subject" placeholder="科目" value="${subject}">
+            <textarea class="input-content" placeholder="作业内容...">${content}</textarea>
+            <button class="btn-icon btn-delete" title="删除"><i class="ri-close-line"></i></button>
+        `; 
+        
+        const ta = div.querySelector('.input-content');
+        const autoResize = () => {
+            ta.style.height = 'auto';
+            ta.style.height = ta.scrollHeight + 'px';
+        };
+        ta.addEventListener('input', autoResize);
+        setTimeout(autoResize, 0);
+
+        div.querySelector('.btn-delete').onclick = () => div.remove();
+        
+        listContainer.appendChild(div);
+    }
+
+    document.getElementById('btn-add-row').onclick = () => {
+        addRow();
+        setTimeout(() => {
+            listContainer.scrollTop = listContainer.scrollHeight;
+        }, 50);
+    };
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+        const date = document.getElementById('date-picker').value;
+        const btn = document.getElementById('btn-save');
+        const status = document.getElementById('status-msg');
+        
+        // Collect data
+        const items = [];
+        listContainer.querySelectorAll('.homework-item').forEach(row => {
+            const subject = row.querySelector('.input-subject').value.trim();
+            const content = row.querySelector('.input-content').value.trim();
+            if (subject || content) {
+                items.push({ subject, content });
+            }
+        });
+
+        btn.disabled = true;
+        status.textContent = '保存中...';
+        
+        try {
+            const jsonStr = JSON.stringify(items);
+            console.log('Saving:', date, jsonStr);
+            const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'saveHomework', [date, jsonStr]);
+            if (res.ok) {
+                status.textContent = '已保存 ' + new Date().toLocaleTimeString();
+                status.style.color = '#4caf50';
+            } else {
+                throw new Error(res.error || 'Unknown error');
+            }
+        } catch(e) {
+            status.textContent = '保存失败: ' + e.message;
+            status.style.color = '#d9534f';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+  </script>
+</body>
+</html>
