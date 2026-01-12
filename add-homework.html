@@ -167,13 +167,23 @@
         } catch(e) { console.error('Failed to load icons', e); }
     })();
 
+    // DEBUG INFO
+    (async () => {
+        try {
+            const path = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getDataPath', []);
+            console.log('Data Path:', path);
+        } catch(e) {}
+    })();
+
     const listContainer = document.getElementById('homework-list');
     const defaultSubjects = ['语文', '数学', '英语', '物理', '化学', '生物'];
 
     const getLocalISODate = () => {
         const d = new Date();
-        const offset = d.getTimezoneOffset() * 60000;
-        return new Date(d.getTime() - offset).toISOString().split('T')[0];
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
     
     const today = getLocalISODate();
@@ -225,28 +235,44 @@
             document.getElementById('status-msg').textContent = '';
         } catch(e) {
             console.error(e);
-            document.getElementById('status-msg').textContent = '加载失败: ' + e.message;
+            const status = document.getElementById('status-msg');
+            status.textContent = '加载失败: ' + e.message;
+            status.style.color = '#d9534f';
         }
     }
 
     function addRow(subject = '', content = '') {
         const div = document.createElement('div');
         div.className = 'homework-item';
-        div.innerHTML = `
-            <input type="text" class="input-subject" placeholder="科目" value="${subject}">
-            <textarea class="input-content" placeholder="作业内容...">${content}</textarea>
-            <button class="btn-icon btn-delete" title="删除"><i class="ri-close-line"></i></button>
-        `; 
         
-        const ta = div.querySelector('.input-content');
+        const inputSubject = document.createElement('input');
+        inputSubject.type = 'text';
+        inputSubject.className = 'input-subject';
+        inputSubject.placeholder = '科目';
+        inputSubject.value = subject;
+        
+        const inputContent = document.createElement('textarea');
+        inputContent.className = 'input-content';
+        inputContent.placeholder = '作业内容...';
+        inputContent.value = content;
+        
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'btn-icon btn-delete';
+        btnDelete.title = '删除';
+        btnDelete.innerHTML = '<i class="ri-close-line"></i>';
+        
+        div.appendChild(inputSubject);
+        div.appendChild(inputContent);
+        div.appendChild(btnDelete);
+        
         const autoResize = () => {
-            ta.style.height = 'auto';
-            ta.style.height = ta.scrollHeight + 'px';
+            inputContent.style.height = 'auto';
+            inputContent.style.height = inputContent.scrollHeight + 'px';
         };
-        ta.addEventListener('input', autoResize);
+        inputContent.addEventListener('input', autoResize);
         setTimeout(autoResize, 0);
 
-        div.querySelector('.btn-delete').onclick = () => div.remove();
+        btnDelete.onclick = () => div.remove();
         
         listContainer.appendChild(div);
     }
@@ -282,6 +308,7 @@
             const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'saveHomework', [date, jsonStr]);
             if (res.ok) {
                 status.textContent = '已保存 ' + new Date().toLocaleTimeString();
+                if (res.path) console.log('Saved to:', res.path);
                 status.style.color = '#4caf50';
             } else {
                 throw new Error(res.error || 'Unknown error');

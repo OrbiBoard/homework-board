@@ -9,8 +9,11 @@ let currentFontSize = 14;
 
 function getLocalISODate() {
     const d = new Date();
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+    // To ensure consistency with the input[type="date"] value which is local YYYY-MM-DD
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function formatDateDisplay(dateStr) {
@@ -24,55 +27,87 @@ async function loadHomework() {
     dateDisplay.textContent = formatDateDisplay(date);
     
     try {
+        console.log('Fetching homework for date:', date);
         const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getHomework', [date]);
-        renderHomework(res && res.ok ? res.data : null);
+        console.log('Get homework response:', res);
+        
+        if (res && res.ok) {
+            renderHomework(res.data);
+        } else {
+            console.error('Get homework failed:', res);
+            contentDiv.innerHTML = '<div class="empty">加载失败</div>';
+        }
     } catch (e) {
-        contentDiv.innerHTML = '<div class="empty">加载失败</div>';
-        console.error(e);
+        contentDiv.innerHTML = '<div class="empty">加载错误</div>';
+        console.error('Load Error:', e);
     }
 }
 
 function renderHomework(data) {
+    console.log('Rendering Data:', typeof data, data);
     contentDiv.innerHTML = '';
     
-    if (!data || (Array.isArray(data) && data.length === 0)) {
+    if (!data) {
         contentDiv.innerHTML = '<div class="empty">今日暂无作业<br>点击 + 号添加</div>';
         return;
     }
 
+    let items = [];
+
     // Handle string data (legacy or JSON string)
     if (typeof data === 'string') {
         try {
+            // Try to parse
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed)) {
-                renderList(parsed);
+                items = parsed;
+            } else if (typeof parsed === 'object') {
+                // If it's an object but not array, maybe legacy format?
+                // Or maybe it's just a single object item?
+                items = [parsed];
             } else {
-                renderSingleItem('备注', data);
+                // Primitive value?
+                items = [{ subject: '备注', content: String(parsed) }];
             }
-        } catch {
-            renderSingleItem('作业', data);
+        } catch (e) {
+            console.warn('JSON parse failed, treating as raw string:', e);
+            // Treat as raw text if not empty
+            if (data.trim()) {
+                items = [{ subject: '作业', content: data }];
+            }
         }
+    } else if (Array.isArray(data)) {
+        items = data;
+    } else if (typeof data === 'object') {
+        items = [data]; // Single object
+    }
+
+    if (items.length === 0) {
+        contentDiv.innerHTML = '<div class="empty">今日暂无作业<br>点击 + 号添加</div>';
         return;
     }
 
-    // Handle Array data
-    if (Array.isArray(data)) {
-        renderList(data);
-    }
+    renderList(items);
 }
 
 function renderList(items) {
+    console.log('Rendering List Items:', items);
     items.forEach(item => {
-        if (!item.content && !item.subject) return;
+        // Skip if subject is missing, but allow empty content
+        if (!item || !item.subject) return;
+        
         const row = document.createElement('div');
         row.className = 'homework-item';
         
         const subject = item.subject || '其他';
         const content = item.content || '';
         
+        // Ensure content is visible even if empty (min-height handled by CSS usually, but adding &nbsp; if really needed?)
+        // CSS has padding, so it should be fine.
+        
         row.innerHTML = `
             <div class="subject-tag" style="font-size: ${currentFontSize}px">${subject}</div>
-            <div class="homework-text" style="font-size: ${currentFontSize}px">${content}</div>
+            <div class="homework-text" style="font-size: ${currentFontSize}px">${content || '&nbsp;'}</div>
         `;
         contentDiv.appendChild(row);
     });

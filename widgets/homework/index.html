@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <!-- Link will be injected dynamically -->
+  <link rel="stylesheet" href="../../../../renderer/remixicon-local.css">
   <style>
     :root {
         --bg-color: rgba(30, 30, 30, 0.95);
@@ -120,20 +120,5 @@
       <!-- Items -->
   </div>
   <script src="index.js"></script>
-  <script>
-    const { ipcRenderer } = require('electron');
-    // Inject RemixIcon
-    (async () => {
-        try {
-            const url = await ipcRenderer.invoke('asset:url', 'remixicon-local.css');
-            if (url) {
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = url;
-                document.head.appendChild(link);
-            }
-        } catch(e) {}
-    })();
-  </script>
 </body>
 </html>
