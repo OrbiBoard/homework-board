@@ -1,6 +1,6 @@
 {
   "id": "homework-board",
-  "name": "每日作业",
+  "name": "桌面组件.作业板",
   "version": "1.0.0",
   "description": "在桌面上显示每日作业，支持按日期管理",
   "author": "OrbiBoard",
@@ -15,5 +15,10 @@
       "target": "openAddWindow"
     }
   ],
-  "enabled": true
+  "enabled": true,
+  "dependencies": [
+    {
+      "id": "desktop-widgets"
+    }
+  ]
 }
