@@ -3,141 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <title>添加作业</title>
-  <!-- Link will be injected dynamically -->
   <style>
+    /* Theme Variables Default (Dark) */
     :root {
-      --bg-color: #1e1e1e;
-      --text-color: #e0e0e0;
-      --input-bg: #2d2d2d;
-      --border-color: #444;
-      --primary-color: #0078d4;
-      --hover-color: #3d3d3d;
-      --danger-color: #d9534f;
+      --bg: #121621;
+      --fg: #ededed;
+      --muted: #94a3b8;
+      --accent: #238f4a;
+      --panel: rgba(255, 255, 255, 0.04);
+      --item-bg: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.12);
+      --bg-modal: #1b1f2a;
+      --accent-rgb: 35, 143, 74;
+      --danger: #dc2626;
     }
+
     body { 
-      font-family: "Microsoft YaHei", sans-serif; 
-      padding: 20px; 
-      background: var(--bg-color); 
-      color: var(--text-color); 
+      font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif; 
+      padding: 24px; 
+      background: var(--bg-modal); 
+      color: var(--fg); 
       margin: 0;
       display: flex;
       flex-direction: column;
       height: 100vh;
       box-sizing: border-box;
+      transition: background 0.3s, color 0.3s;
     }
+
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
     }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: bold; color: #aaa; font-size: 14px; }
     
+    .header-title {
+      font-size: 20px; 
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     input[type="date"] {
-      background: var(--input-bg);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-      padding: 8px;
-      border-radius: 4px;
+      background: var(--item-bg);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
       font-family: inherit;
+      outline: none;
     }
 
     .homework-list {
       flex: 1;
       overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 10px;
-      background: #252525;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: var(--panel);
       margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     .homework-item {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 12px;
-      align-items: flex-start;
-      background: var(--input-bg);
-      padding: 10px;
-      border-radius: 4px;
+      display: grid;
+      grid-template-columns: 100px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      background: var(--item-bg);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+    
+    .homework-item:hover {
+      border-color: var(--border);
     }
     
     .homework-item input, .homework-item textarea {
       background: transparent;
       border: 1px solid transparent;
-      color: var(--text-color);
-      padding: 6px;
-      border-radius: 4px;
+      color: var(--fg);
+      padding: 8px;
+      border-radius: 6px;
       font-family: inherit;
       resize: vertical;
+      transition: background 0.2s;
     }
+    
     .homework-item input:focus, .homework-item textarea:focus {
-      background: #333;
-      border-color: var(--primary-color);
+      background: rgba(255, 255, 255, 0.05);
       outline: none;
     }
+    
+    .input-subject { 
+      font-weight: 600; 
+      color: var(--accent);
+      text-align: center;
+      background: rgba(var(--accent-rgb), 0.1) !important;
+    }
 
-    .input-subject { width: 80px; font-weight: bold; margin-top: 2px; }
-    .input-content { flex: 1; min-height: 34px; height: auto; line-height: 1.5; overflow: hidden; }
+    .input-content { 
+      min-height: 38px; 
+      line-height: 1.5; 
+    }
     
     .btn-icon {
       background: transparent;
       border: none;
-      color: #888;
+      color: var(--muted);
       cursor: pointer;
-      padding: 6px;
-      border-radius: 4px;
-      font-size: 16px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 2px;
+      transition: all 0.2s;
     }
-    .btn-icon:hover { background: rgba(255,255,255,0.1); color: #fff; }
-    .btn-delete:hover { color: var(--danger-color); }
+    .btn-icon:hover { 
+      background: rgba(255,255,255,0.1); 
+      color: var(--fg); 
+    }
+    .btn-delete:hover { 
+      background: rgba(220, 38, 38, 0.15);
+      color: var(--danger); 
+    }
 
     .footer {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
-    button.primary-btn { 
-      padding: 10px 24px; 
+    .btn {
+      padding: 8px 16px; 
       cursor: pointer; 
-      background: var(--primary-color); 
-      color: white; 
-      border: none; 
-      border-radius: 4px; 
+      border-radius: 8px; 
       font-size: 14px; 
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: var(--item-bg);
+      color: var(--fg);
+      transition: all 0.2s;
     }
-    button.primary-btn:hover { background: #005a9e; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .secondary-btn {
-      padding: 10px 16px;
-      cursor: pointer;
-      background: #333;
-      color: #ccc;
-      border: 1px solid #555;
-      border-radius: 4px;
-      font-size: 14px;
+    
+    .btn:hover {
+      background: var(--border);
     }
-    .secondary-btn:hover { background: #444; }
+    
+    .btn.primary {
+      background: var(--accent); 
+      color: white; 
+      border-color: transparent; 
+    }
+    .btn.primary:hover { 
+      filter: brightness(1.1); 
+    }
+    
+    .btn:disabled { 
+      opacity: 0.6; 
+      cursor: not-allowed; 
+      filter: grayscale(1);
+    }
 
-    .status { margin-left: auto; color: #888; font-size: 12px; }
+    .status { margin-left: auto; color: var(--muted); font-size: 13px; }
     
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg-color); }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #555; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
   </style>
 </head>
 <body>
   <div class="header">
-    <div style="font-size: 18px; font-weight: bold;">编辑作业</div>
+    <div class="header-title"><i class="ri-edit-2-line"></i> 编辑作业</div>
     <input type="date" id="date-picker">
   </div>
 
@@ -146,16 +194,63 @@
   </div>
 
   <div class="footer">
-    <button class="secondary-btn" id="btn-add-row"><i class="ri-add-line"></i> 添加科目</button>
-    <button class="primary-btn" id="btn-save"><i class="ri-save-line"></i> 保存</button>
+    <button class="btn" id="btn-add-row"><i class="ri-add-line"></i> 添加科目</button>
+    <button class="btn primary" id="btn-save"><i class="ri-save-line"></i> 保存更改</button>
     <span id="status-msg" class="status"></span>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
     
-    // Inject RemixIcon from main app resources
+    // Theme Logic
+    const adjustBrightness = (hex, percent) => {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const amt = Math.round(2.55 * percent);
+      const R = (num >> 16) + amt;
+      const G = (num >> 8 & 0x00FF) + amt;
+      const B = (num & 0x0000FF) + amt;
+      return '#' + (
+        0x1000000 +
+        (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255)
+      ).toString(16).slice(1);
+    };
+
+    const applyTheme = (mode, color) => {
+      const root = document.documentElement;
+      const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      
+      const accent = color || '#238f4a';
+      root.style.setProperty('--accent', accent);
+      
+      const hex = accent.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      root.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+      
+      if (isDark) {
+        root.style.setProperty('--bg', '#121621');
+        root.style.setProperty('--fg', '#ededed');
+        root.style.setProperty('--muted', '#94a3b8');
+        root.style.setProperty('--panel', 'rgba(255, 255, 255, 0.04)');
+        root.style.setProperty('--item-bg', 'rgba(255, 255, 255, 0.04)');
+        root.style.setProperty('--border', 'rgba(255, 255, 255, 0.12)');
+        root.style.setProperty('--bg-modal', '#1b1f2a');
+      } else {
+        root.style.setProperty('--bg', '#f3f4f6');
+        root.style.setProperty('--fg', '#1f2937');
+        root.style.setProperty('--muted', '#6b7280');
+        root.style.setProperty('--panel', '#ffffff');
+        root.style.setProperty('--item-bg', '#f9fafb');
+        root.style.setProperty('--border', '#e5e7eb');
+        root.style.setProperty('--bg-modal', '#ffffff');
+      }
+    };
+
     (async () => {
+        // Init Icons
         try {
             const url = await ipcRenderer.invoke('asset:url', 'remixicon-local.css');
             if (url) {
@@ -165,16 +260,21 @@
                 document.head.appendChild(link);
             }
         } catch(e) { console.error('Failed to load icons', e); }
-    })();
 
-    // DEBUG INFO
-    (async () => {
+        // Init Theme
         try {
-            const path = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getDataPath', []);
-            console.log('Data Path:', path);
-        } catch(e) {}
+            const cfg = await ipcRenderer.invoke('config:get-all', 'system');
+            const mode = cfg?.themeMode || 'system';
+            const color = cfg?.themeColor || '#238f4a';
+            applyTheme(mode, color);
+            
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+              if (mode === 'system') applyTheme('system', color);
+            });
+        } catch (e) { console.error('Theme init failed', e); }
     })();
 
+    // App Logic
     const listContainer = document.getElementById('homework-list');
     const defaultSubjects = ['语文', '数学', '英语', '物理', '化学', '生物'];
 
@@ -189,7 +289,6 @@
     const today = getLocalISODate();
     document.getElementById('date-picker').value = today;
 
-    // Load existing
     loadHomework(today);
 
     document.getElementById('date-picker').addEventListener('change', (e) => {
@@ -199,12 +298,9 @@
     async function loadHomework(date) {
         listContainer.innerHTML = '';
         try {
-            console.log('Loading homework for:', date);
             const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getHomework', [date]);
-            console.log('Loaded result:', res);
             let data = [];
             
-            // Handle data format
             if (res && res.ok && res.data) {
                 if (typeof res.data === 'string') {
                     try {
@@ -212,20 +308,13 @@
                         if (Array.isArray(parsed)) data = parsed;
                         else data = [{ subject: '备注', content: res.data }];
                     } catch {
-                        // Plain text fallback
-                        if (res.data.trim()) {
-                             data = [{ subject: '作业', content: res.data }];
-                        }
+                        if (res.data.trim()) data = [{ subject: '作业', content: res.data }];
                     }
                 } else if (Array.isArray(res.data)) {
                     data = res.data;
-                } else if (typeof res.data === 'object') {
-                     // Should not happen if we stringify on save, but just in case
-                     // Maybe it's a legacy object map? Not supporting that.
                 }
             }
 
-            // If empty, use default subjects
             if (data.length === 0) {
                 defaultSubjects.forEach(subj => addRow(subj, ''));
             } else {
@@ -237,7 +326,7 @@
             console.error(e);
             const status = document.getElementById('status-msg');
             status.textContent = '加载失败: ' + e.message;
-            status.style.color = '#d9534f';
+            status.style.color = '#dc2626';
         }
     }
 
@@ -289,7 +378,6 @@
         const btn = document.getElementById('btn-save');
         const status = document.getElementById('status-msg');
         
-        // Collect data
         const items = [];
         listContainer.querySelectorAll('.homework-item').forEach(row => {
             const subject = row.querySelector('.input-subject').value.trim();
@@ -304,18 +392,16 @@
         
         try {
             const jsonStr = JSON.stringify(items);
-            console.log('Saving:', date, jsonStr);
             const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'saveHomework', [date, jsonStr]);
             if (res.ok) {
                 status.textContent = '已保存 ' + new Date().toLocaleTimeString();
-                if (res.path) console.log('Saved to:', res.path);
-                status.style.color = '#4caf50';
+                status.style.color = 'var(--accent)';
             } else {
                 throw new Error(res.error || 'Unknown error');
             }
         } catch(e) {
             status.textContent = '保存失败: ' + e.message;
-            status.style.color = '#d9534f';
+            status.style.color = '#dc2626';
         } finally {
             btn.disabled = false;
         }
