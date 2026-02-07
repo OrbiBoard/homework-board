@@ -1,12 +1,27 @@
 {
   "id": "homework-board",
-  "name": "桌面组件.作业板",
+  "name": "每日作业",
   "version": "1.0.0",
   "description": "在桌面上显示每日作业，支持按日期管理",
   "author": "OrbiBoard",
-  "type": "plugin",
-  "componentsDir": "widgets",
+  "type": "component",
+  "entry": "widgets/homework/index.html",
+  "group": "desktop_widget",
   "icon": "ri-book-open-line",
+  "recommendedSize": {
+    "width": 300,
+    "height": 400
+  },
+  "configSchema": {
+    "fontSize": {
+      "type": "range",
+      "label": "字体大小",
+      "default": 14,
+      "min": 12,
+      "max": 24,
+      "step": 1
+    }
+  },
   "actions": [
     {
       "id": "addHomework",
