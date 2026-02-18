@@ -181,6 +181,42 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* Debug Console */
+    #debug-console {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 200px;
+        background: #0f1115;
+        border-top: 1px solid var(--border);
+        display: none;
+        flex-direction: column;
+        z-index: 1000;
+        font-family: monospace;
+        font-size: 12px;
+    }
+    #debug-header {
+        padding: 5px 10px;
+        background: #1b1f2a;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--muted);
+    }
+    #debug-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        color: #ccc;
+        white-space: pre-wrap;
+    }
+    .log-time { color: var(--muted); margin-right: 8px; }
+    .log-info { color: #61dafb; }
+    .log-error { color: #ff6b6b; }
+    .log-success { color: #51cf66; }
   </style>
 </head>
 <body>
@@ -196,12 +232,68 @@
   <div class="footer">
     <button class="btn" id="btn-add-row"><i class="ri-add-line"></i> 添加科目</button>
     <button class="btn primary" id="btn-save"><i class="ri-save-line"></i> 保存更改</button>
+    <button class="btn" id="btn-debug" onclick="toggleDebug()" style="margin-left: 8px; opacity: 0.5;"><i class="ri-bug-line"></i> Debug</button>
     <span id="status-msg" class="status"></span>
+  </div>
+
+  <div id="debug-console">
+      <div id="debug-header">
+          <span>Debug Console</span>
+          <div>
+            <button onclick="clearDebug()" class="btn-icon" style="display:inline-block; font-size: 12px; padding: 2px 6px;">Clear</button>
+            <button onclick="toggleDebug()" class="btn-icon" style="display:inline-block; font-size: 12px; padding: 2px 6px;">Close</button>
+          </div>
+      </div>
+      <div id="debug-content"></div>
   </div>
 
   <script>
     const { ipcRenderer } = require('electron');
     
+    // Debug Logic
+    function toggleDebug() {
+        const consoleEl = document.getElementById('debug-console');
+        const isHidden = consoleEl.style.display === 'none' || consoleEl.style.display === '';
+        consoleEl.style.display = isHidden ? 'flex' : 'none';
+        if (isHidden) {
+            // Adjust body height or padding if needed, but absolute positioning is fine
+        }
+    }
+
+    function clearDebug() {
+        document.getElementById('debug-content').innerHTML = '';
+    }
+
+    function logDebug(msg, data = null, type = 'info') {
+        const content = document.getElementById('debug-content');
+        const div = document.createElement('div');
+        const time = new Date().toLocaleTimeString();
+        
+        let dataStr = '';
+        if (data !== null) {
+            try {
+                dataStr = '\n' + JSON.stringify(data, null, 2);
+            } catch(e) {
+                dataStr = '\n[Circular/Unserializable]';
+            }
+        }
+        
+        div.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${type}">${msg}</span>${dataStr}`;
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        div.style.padding = '4px 0';
+        
+        content.appendChild(div);
+        content.scrollTop = content.scrollHeight;
+        console.log(`[Debug] ${msg}`, data || '');
+    }
+
+    // Capture console errors
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+        originalConsoleError.apply(console, args);
+        logDebug(args.map(a => String(a)).join(' '), null, 'error');
+    };
+
     // Theme Logic
     const adjustBrightness = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
@@ -263,7 +355,12 @@
 
         // Init Theme
         try {
-            const cfg = await ipcRenderer.invoke('config:get-all', 'system');
+            let cfg = {};
+            try {
+                cfg = await ipcRenderer.invoke('config:get-all', 'system');
+            } catch (err) {
+                console.warn('Config load failed, using defaults:', err.message);
+            }
             const mode = cfg?.themeMode || 'system';
             const color = cfg?.themeColor || '#238f4a';
             applyTheme(mode, color);
@@ -297,22 +394,38 @@
 
     async function loadHomework(date) {
         listContainer.innerHTML = '';
+        logDebug(`Loading homework for ${date}...`);
         try {
             const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getHomework', [date]);
+            logDebug('Load response received', res);
+            
+            // Handle wrapper { ok: true, result: { ... } } or direct { ok: true, data: ... }
+            const payload = (res.result && res.result.ok) ? res.result : res;
+            
             let data = [];
             
-            if (res && res.ok && res.data) {
-                if (typeof res.data === 'string') {
+            if (payload && payload.ok && payload.data) {
+                const rawData = payload.data;
+                if (typeof rawData === 'string') {
                     try {
-                        const parsed = JSON.parse(res.data);
+                        const parsed = JSON.parse(rawData);
+                        logDebug('Parsed JSON string', parsed);
                         if (Array.isArray(parsed)) data = parsed;
-                        else data = [{ subject: '备注', content: res.data }];
+                        else data = [{ subject: '备注', content: rawData }];
                     } catch {
-                        if (res.data.trim()) data = [{ subject: '作业', content: res.data }];
+                        logDebug('Raw string content (not JSON)', rawData);
+                        if (rawData.trim()) data = [{ subject: '作业', content: rawData }];
                     }
-                } else if (Array.isArray(res.data)) {
-                    data = res.data;
+                } else if (Array.isArray(rawData)) {
+                    logDebug('Received Array data', rawData);
+                    data = rawData;
+                } else if (typeof rawData === 'object') {
+                    logDebug('Received Object data', rawData);
+                    // Handle single object case (legacy or single item)
+                    data = [rawData];
                 }
+            } else {
+                logDebug('No data found or empty response', payload);
             }
 
             if (data.length === 0) {
@@ -391,15 +504,24 @@
         status.textContent = '保存中...';
         
         try {
-            const jsonStr = JSON.stringify(items);
-            const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'saveHomework', [date, jsonStr]);
-            if (res.ok) {
+            logDebug('Saving homework...', items);
+            // Send items array directly, index.js will handle storage
+            const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'saveHomework', [date, items]);
+            logDebug('Save response', res);
+            
+            // Check for wrapper result
+            const isSuccess = (res.result && res.result.ok) || res.ok;
+            
+            if (isSuccess) {
                 status.textContent = '已保存 ' + new Date().toLocaleTimeString();
                 status.style.color = 'var(--accent)';
+                logDebug('Save successful');
             } else {
-                throw new Error(res.error || 'Unknown error');
+                const error = (res.result && res.result.error) || res.error || 'Unknown error';
+                throw new Error(error);
             }
         } catch(e) {
+            logDebug('Save failed', e.message, 'error');
             status.textContent = '保存失败: ' + e.message;
             status.style.color = '#dc2626';
         } finally {

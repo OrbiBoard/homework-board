@@ -31,8 +31,11 @@ async function loadHomework() {
         const res = await ipcRenderer.invoke('plugin:call', 'homework-board', 'getHomework', [date]);
         console.log('Get homework response:', res);
         
-        if (res && res.ok) {
-            renderHomework(res.data);
+        // Handle wrapper { ok: true, result: { ... } } or direct { ok: true, data: ... }
+        const payload = (res && res.result && res.result.ok) ? res.result : res;
+        
+        if (payload && payload.ok) {
+            renderHomework(payload.data);
         } else {
             console.error('Get homework failed:', res);
             contentDiv.innerHTML = '<div class="empty">加载失败</div>';
@@ -93,8 +96,8 @@ function renderHomework(data) {
 function renderList(items) {
     console.log('Rendering List Items:', items);
     items.forEach(item => {
-        // Skip if subject is missing, but allow empty content
-        if (!item || !item.subject) return;
+        // Skip if item is invalid
+        if (!item) return;
         
         const row = document.createElement('div');
         row.className = 'homework-item';
